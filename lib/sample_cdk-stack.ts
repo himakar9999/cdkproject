@@ -1,16 +1,38 @@
-import { Stack, StackProps } from 'aws-cdk-lib';
-import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+import {App, Stack, StackProps} from '@aws-cdk/core';
+import {Peer, Port, SecurityGroup, SubnetType, Vpc} from '@aws-cdk/aws-ec2'
 
-export class SampleCdkStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
-    super(scope, id, props);
+export class sampleCDKStack extends Stack {
+    readonly vpc: Vpc;
+    readonly ingressSecurityGroup: SecurityGroup;
+    readonly egressSecurityGroup: SecurityGroup;
 
-    // The code that defines your stack goes here
+    constructor(scope: App, id: string, props?: StackProps) {
+        super(scope, id, props);
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'SampleCdkQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
-  }
+     this.vpc = new Vpc(this, 'CustomVPC', {
+    cidr: '10.0.0.0/16',
+    maxAzs: 2,
+    subnetConfiguration: [{
+        cidrMask: 26,
+        name: 'isolatedSubnet',
+        subnetType: SubnetType.ISOLATED,
+    }],
+    natGateways: 0
+});
+     this.ingressSecurityGroup = new SecurityGroup(this, 'ingress-security-group', {
+    vpc: this.vpc,
+    allowAllOutbound: false,
+    securityGroupName: 'IngressSecurityGroup',
+});
+     this.ingressSecurityGroup.addIngressRule(Peer.ipv4('10.0.0.0/16'), Port.tcp(3306));
+
+     this.egressSecurityGroup = new SecurityGroup(this, 'egress-security-group', {
+    vpc: this.vpc,
+    allowAllOutbound: false,
+    securityGroupName: 'EgressSecurityGroup',
+});
+    this.egressSecurityGroup.addEgressRule(Peer.anyIpv4(), Port.tcp(80));
+    
+    //Place resource definitions here.
+    }
 }
